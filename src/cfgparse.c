@@ -966,6 +966,19 @@ int cfg_parse_global(const char *file, int linenum, char **args, int kwm)
 			err_code |= ERR_ALERT | ERR_FATAL;
 		}
 	}
+	else if (!strcmp(args[0], "log-send-hostname")) { /* set the hostname in syslog header */
+		if (global.log_send_hostname != NULL) {
+			Alert("parsing [%s:%d] : '%s' already specified. Continuing.\n", file, linenum, args[0]);
+			err_code |= ERR_ALERT;
+			goto out;
+		}
+		if (*(args[1]) == 0) {
+			Alert("parsing [%s:%d] : '%s' expects a string as an argument.\n", file, linenum, args[0]);
+			err_code |= ERR_ALERT | ERR_FATAL;
+			goto out;
+		}
+		global.log_send_hostname = strdup(args[1]);
+	}
 	else if (!strcmp(args[0], "spread-checks")) {  /* random time between checks (0-50) */
 		if (global.spread_checks != 0) {
 			Alert("parsing [%s:%d]: spread-checks already specified. Continuing.\n", file, linenum);

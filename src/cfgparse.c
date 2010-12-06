@@ -973,11 +973,11 @@ int cfg_parse_global(const char *file, int linenum, char **args, int kwm)
 			goto out;
 		}
 		if (*(args[1]) == 0) {
-			Alert("parsing [%s:%d] : '%s' expects a string as an argument.\n", file, linenum, args[0]);
-			err_code |= ERR_ALERT | ERR_FATAL;
-			goto out;
+      global.log_send_hostname = hostname;
 		}
-		global.log_send_hostname = strdup(args[1]);
+		else {
+  		global.log_send_hostname = strdup(args[1]);
+		}
 	}
 	else if (!strcmp(args[0], "spread-checks")) {  /* random time between checks (0-50) */
 		if (global.spread_checks != 0) {

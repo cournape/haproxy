@@ -169,9 +169,10 @@ void send_log(struct proxy *p, int level, const char *message, ...)
 	static long tvsec = -1;	/* to force the string to be initialized */
 	va_list argp;
 	static char logmsg[MAX_SYSLOG_LEN];
+	static char loghostname[MAX_SYSLOG_LEN] = {""};
 	static char *dataptr = NULL;
 	int fac_level;
-	int hdr_len, data_len;
+	int hdr_len, data_len, loghostname_len;
 	struct logsrv *logsrvs[2];
 	int facilities[2], loglevel[2], minlvl[2];
 	int nblogger;
@@ -189,21 +190,17 @@ void send_log(struct proxy *p, int level, const char *message, ...)
 		get_localtime(tvsec, &tm);
 
     /* set the syslog hostname header if configured */
-    if (global.log_send_hostname == NULL) {
-  		hdr_len = snprintf(logmsg, sizeof(logmsg),
-  				   "<<<<>%s %2d %02d:%02d:%02d %s[%d]: ",
-  				   monthname[tm.tm_mon],
-  				   tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
-  				   progname, pid);
+    if (global.log_send_hostname != NULL) {
+      loghostname_len = snprintf(loghostname, sizeof(loghostname), "%s ", global.log_send_hostname);
     }
-    else {
-  		hdr_len = snprintf(logmsg, sizeof(logmsg),
-  				   "<<<<>%s %2d %02d:%02d:%02d %s %s[%d]: ",
-  				   monthname[tm.tm_mon],
-  				   tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
-  				   global.log_send_hostname,
-  				   progname, pid);
-  	}
+    
+  	hdr_len = snprintf(logmsg, sizeof(logmsg),
+  				"<<<<>%s %2d %02d:%02d:%02d %s%s[%d]: ",
+  				monthname[tm.tm_mon],
+  				tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+  				loghostname,
+  				progname, pid);
+  				   
 		/* WARNING: depending upon implementations, snprintf may return
 		 * either -1 or the number of bytes that would be needed to store
 		 * the total message. In both cases, we must adjust it.

@@ -8113,6 +8113,61 @@ pattern_fetch_hdr_ip(struct proxy *px, struct session *l4, void *l7, int dir,
 	return data->ip.s_addr != 0;
 }
 
+/*
+ * XXX: This code is ugly and inefficient. String matching is brute force, and
+ * most likely broken in some cases
+ */
+static int
+pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
+                     const struct pattern_arg *arg_p, int arg_i, union pattern_data *data)
+{
+	struct http_txn *txn = l7;
+	struct http_msg *msg = &txn->req;
+	char *substr = arg_p->data.str.str;
+	char *value_start, *value_end;
+	int i, j, anchor;
+
+	j = 0;
+	anchor = 0;
+	for (i = msg->sl.rq.u; i < msg->sl.rq.u + msg->sl.rq.u_l; ++i) {
+		if (msg->sol[i] == substr[j]) {
+			j += 1;
+		} else {
+			j = 0;
+			anchor = i + 1;
+		}
+		if (j == arg_p->data.str.len) {
+			break;
+		}
+	}
+
+	if (j == arg_p->data.str.len) {
+		size_t value_l, chunk_sz;
+
+		value_start = msg->sol + anchor + arg_p->data.str.len;
+		value_end = value_start;
+		while (*value_end != '\0' && *value_end != ' ' && *value_end != '&') {
+			value_end += 1;
+		}
+		value_l = value_end - value_start;
+		chunk_sz = value_l + 1;
+
+		if(data->str.str != NULL) {
+			free(data->str.str);
+		}
+		data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
+
+		memcpy(data->str.str, value_start, value_l);
+		data->str.str[value_l] = '\0';
+		data->str.len = value_l;
+		data->str.size = chunk_sz;
+		// printf("%s: %s\n", __func__, data->str.str);
+	} else {
+		// printf("%s: NO MATCH\n", __func__);
+		return 0;
+	}
+	return 1;
+}
 
 
 /************************************************************************/
@@ -8121,6 +8176,7 @@ pattern_fetch_hdr_ip(struct proxy *px, struct session *l4, void *l7, int dir,
 /* Note: must not be declared <const> as its list will be overwritten */
 static struct pattern_fetch_kw_list pattern_fetch_keywords = {{ },{
 	{ "hdr", pattern_fetch_hdr_ip, pattern_arg_str, PATTERN_TYPE_IP, PATTERN_FETCH_REQ },
+	{ "url_param", pattern_fetch_url_param, pattern_url_param_arg_str, PATTERN_TYPE_STRING, PATTERN_FETCH_REQ },
 	{ NULL, NULL, NULL, 0, 0 },
 }};
 

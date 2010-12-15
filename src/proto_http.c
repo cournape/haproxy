@@ -8180,9 +8180,7 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 		memcpy(data->str.str, value_start, value_l);
 		data->str.str[value_l] = '\0';
 		data->str.len = value_l;
-		// printf("%s: %s\n", __func__, data->str.str);
 	} else {
-		// printf("%s: NO MATCH\n", __func__);
 		return 0;
 	}
 	return 1;

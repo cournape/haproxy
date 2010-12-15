@@ -8194,11 +8194,12 @@ _find_url_param_pos(char* query_string, size_t query_string_l,
 	}
 
 	if (j == url_param_name_l) {
-		if(i >= query_string || anchor <= 0
-		   || query_string[anchor+j] != '=') {
+		if(j >= query_string_l || query_string[anchor+j] != '=') {
 			return -1;
 		}
-		if (_is_param_delimiter(query_string[anchor-1])) {
+		if (anchor == 0) {
+			return 0;
+		} else if (_is_param_delimiter(query_string[anchor-1])) {
 			return anchor;
 		}
 		return -1;

@@ -8154,14 +8154,14 @@ _find_query_string_pos(char *path, size_t path_l)
 }
 
 static int
-_find_url_param(char* path, size_t sz, const struct chunk *url_param_name)
+_find_url_param_pos(char* query_string, size_t query_string_l, const struct chunk *url_param_name)
 {
 	int i, j, anchor;
 
 	j = 0;
 	anchor = 0;
-	for (i = 0; i < sz; ++i) {
-		if (path[i] == url_param_name->str[j]) {
+	for (i = 0; i < query_string_l; ++i) {
+		if (query_string[i] == url_param_name->str[j]) {
 			j += 1;
 		} else {
 			j = 0;
@@ -8172,8 +8172,14 @@ _find_url_param(char* path, size_t sz, const struct chunk *url_param_name)
 		}
 	}
 
-	if (j == url_param_name->len && (path[anchor-1] == '&' || path[anchor-1] == '?')) {
-		return anchor;
+	if (j == url_param_name->len) {
+		if (anchor <= 0) {
+			return 0;
+		} else if (query_string[anchor-1] == '&'
+			   || query_string[anchor-1] == ';') {
+			return anchor;
+		}
+		return -1;
 	}
 
 	return -1;
@@ -8205,7 +8211,7 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 	query_string = path + anchor;
 	query_string_l = path_l - anchor;
 
-	anchor = _find_url_param(query_string, query_string_l, &(arg_p->data.str));
+	anchor = _find_url_param_pos(query_string, query_string_l, &(arg_p->data.str));
 
 	if (anchor >= 0) {
 		value_start = query_string + anchor + arg_p->data.str.len;

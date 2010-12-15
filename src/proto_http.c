@@ -8144,6 +8144,10 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 	if (j == arg_p->data.str.len) {
 		size_t value_l, chunk_sz;
 
+		if (msg->sol[anchor-1] != '&' && msg->sol[anchor-1] != '?') {
+			return 0;
+		}
+
 		value_start = msg->sol + anchor + arg_p->data.str.len;
 		value_end = value_start;
 		while (*value_end != '\0' && *value_end != ' ' && *value_end != '&') {

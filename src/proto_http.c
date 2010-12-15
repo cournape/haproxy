@@ -8113,6 +8113,32 @@ pattern_fetch_hdr_ip(struct proxy *px, struct session *l4, void *l7, int dir,
 	return data->ip.s_addr != 0;
 }
 
+static int
+_find_url_param(char* path, size_t sz, const struct chunk *url_param_name)
+{
+	int i, j, anchor;
+
+	j = 0;
+	anchor = 0;
+	for (i = 0; i < sz; ++i) {
+		if (path[i] == url_param_name->str[j]) {
+			j += 1;
+		} else {
+			j = 0;
+			anchor = i + 1;
+		}
+		if (j == url_param_name->len) {
+			break;
+		}
+	}
+
+	if (j == url_param_name->len && (path[anchor-1] == '&' || path[anchor-1] == '?')) {
+		return anchor;
+	}
+
+	return -1;
+}
+
 /*
  * XXX: This code is ugly and inefficient. String matching is brute force, and
  * most likely broken in some cases
@@ -8123,31 +8149,14 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 {
 	struct http_txn *txn = l7;
 	struct http_msg *msg = &txn->req;
-	char *substr = arg_p->data.str.str;
 	char *value_start, *value_end;
-	int i, j, anchor;
+	int anchor;
+	size_t value_l, chunk_sz;
 
-	j = 0;
-	anchor = 0;
-	for (i = msg->sl.rq.u; i < msg->sl.rq.u + msg->sl.rq.u_l; ++i) {
-		if (msg->sol[i] == substr[j]) {
-			j += 1;
-		} else {
-			j = 0;
-			anchor = i + 1;
-		}
-		if (j == arg_p->data.str.len) {
-			break;
-		}
-	}
+	anchor = _find_url_param(msg->sol + msg->sl.rq.u, msg->sl.rq.u_l - msg->sl.rq.u,
+				 &(arg_p->data.str));
 
-	if (j == arg_p->data.str.len) {
-		size_t value_l, chunk_sz;
-
-		if (msg->sol[anchor-1] != '&' && msg->sol[anchor-1] != '?') {
-			return 0;
-		}
-
+	if (anchor >= 0) {
 		value_start = msg->sol + anchor + arg_p->data.str.len;
 		value_end = value_start;
 		while (*value_end != '\0' && *value_end != ' ' && *value_end != '&') {

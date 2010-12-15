@@ -8186,6 +8186,52 @@ _find_url_param_pos(char* query_string, size_t query_string_l,
 	return -1;
 }
 
+static int
+_is_param_delimiter(char c)
+{
+	return c == '&' || c == ';' || c == ' ';
+}
+
+static void
+_find_url_param_value(char* path, size_t path_l,
+		      char* url_param_name, size_t url_param_name_l,
+		      char** value, size_t* value_l)
+{
+	char *query_string;
+	char *value_start, *value_end;
+	size_t query_string_l;
+	int anchor;
+
+	anchor = _find_query_string_pos(path, path_l);
+	if (anchor < 0) {
+		goto not_found;
+	}
+	query_string = path + anchor;
+	query_string_l = path_l - anchor;
+
+	anchor = _find_url_param_pos(query_string, query_string_l,
+			url_param_name, url_param_name_l);
+
+	if (anchor < 0) {
+		goto not_found;
+	} else {
+		value_start = query_string + anchor + url_param_name_l;
+		value_end = value_start;
+		while ((value_end < (query_string + query_string_l - 1))
+		       && !_is_param_delimiter(*(value_end+1))) {
+			value_end += 1;
+		}
+		*value = value_start;
+		*value_l = value_end + 1 - value_start;
+	}
+	return;
+
+not_found:
+	*value = NULL;
+	value_l = 0;
+	return;
+}
+
 /*
  * XXX: This code is ugly and inefficient. String matching is brute force, and
  * most likely broken in some cases
@@ -8196,53 +8242,40 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 {
 	struct http_txn *txn = l7;
 	struct http_msg *msg = &txn->req;
-	char *query_string;
-	char *value_start, *value_end;
 	char *path;
+	char *url_param_value;
+	size_t url_param_value_l;
 	int anchor;
 	size_t value_l, chunk_sz, path_l, query_string_l;
 
 	path = msg->sol + msg->sl.rq.u;
 	path_l = msg->sl.rq.u_l;
 
-	anchor = _find_query_string_pos(path, path_l);
-	if (anchor < 0) {
+	_find_url_param_value(path, path_l, arg_p->data.str.str, arg_p->data.str.len,
+		       	      &url_param_value, &url_param_value_l);
+	if (url_param_value == NULL) {
 		return 0;
 	}
-	query_string = path + anchor;
-	query_string_l = path_l - anchor;
 
-	anchor = _find_url_param_pos(query_string, query_string_l,
-			arg_p->data.str.str, arg_p->data.str.len);
+	chunk_sz = url_param_value_l + 1;
 
-	if (anchor >= 0) {
-		value_start = query_string + anchor + arg_p->data.str.len;
-		value_end = value_start;
-		while (*value_end != '\0' && *value_end != ' ' && *value_end != '&') {
-			value_end += 1;
-		}
-		value_l = value_end - value_start;
-		chunk_sz = value_l + 1;
-
-		if (data->str.str == NULL) {
-			data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
-			data->str.size = chunk_sz;
-		} else if (data->str.size < chunk_sz) {
-			/* over-allocate to avoid reallocating all the time */
-			chunk_sz *= 2;
-			free(data->str.str);
-			data->str.size = chunk_sz;
-			data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
-			data->str.size = chunk_sz;
-		}
-
-		memcpy(data->str.str, value_start, value_l);
-		data->str.str[value_l] = '\0';
-		data->str.len = value_l;
-
-		return 1;
+	if (data->str.str == NULL) {
+		data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
+		data->str.size = chunk_sz;
+	} else if (data->str.size < chunk_sz) {
+		/* over-allocate to avoid reallocating all the time */
+		chunk_sz *= 2;
+		free(data->str.str);
+		data->str.size = chunk_sz;
+		data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
+		data->str.size = chunk_sz;
 	}
-	return 0;
+
+	memcpy(data->str.str, url_param_value, url_param_value_l);
+	data->str.str[url_param_value_l] = '\0';
+	data->str.len = url_param_value_l;
+
+	return 1;
 }
 
 

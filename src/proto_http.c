@@ -8261,6 +8261,7 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 	struct http_msg *msg = &txn->req;
 	char *path, *url_param_value;
 	size_t path_l, url_param_value_l;
+	char *buf;
 
 	path = msg->sol + msg->sl.rq.u;
 	path_l = msg->sl.rq.u_l;
@@ -8271,7 +8272,12 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 		return 0;
 	}
 
-	chunk_initstrn(&data->str, url_param_value, url_param_value_l);
+	/* XXX: not sure I understand chunk buffer lifecycle - here we keep
+	 * reallocating the buffer, which sounds quite inefficient. Not sure it
+	 * is even correct - not copying the string definitely does not work */
+	chunk_destroy(&data->str);
+	buf = strndup(url_param_value, url_param_value_l);
+	chunk_initlen(&data->str, buf, url_param_value_l + 1, url_param_value_l);
 	return 1;
 }
 

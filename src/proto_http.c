@@ -8156,15 +8156,21 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 		value_l = value_end - value_start;
 		chunk_sz = value_l + 1;
 
-		if(data->str.str != NULL) {
+		if (data->str.str == NULL) {
+			data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
+			data->str.size = chunk_sz;
+		} else if (data->str.size < chunk_sz) {
+			/* over-allocate to avoid reallocating all the time */
+			chunk_sz *= 2;
 			free(data->str.str);
+			data->str.size = chunk_sz;
+			data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
+			data->str.size = chunk_sz;
 		}
-		data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
 
 		memcpy(data->str.str, value_start, value_l);
 		data->str.str[value_l] = '\0';
 		data->str.len = value_l;
-		data->str.size = chunk_sz;
 		// printf("%s: %s\n", __func__, data->str.str);
 	} else {
 		// printf("%s: NO MATCH\n", __func__);

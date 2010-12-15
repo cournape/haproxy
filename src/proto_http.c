@@ -8113,6 +8113,46 @@ pattern_fetch_hdr_ip(struct proxy *px, struct session *l4, void *l7, int dir,
 	return data->ip.s_addr != 0;
 }
 
+/*
+ * Given a path string and its length, find the position of beginning of the
+ * query string. Returns -1 if no query string is found in the path.
+ *
+ * Example: if path = "/foo/bar/fubar?yo=mama;ye=daddy", and n = 22:
+ *
+ * &path[_find_query_string(path, n)] points to "yo=mama;ye=daddy" string
+ */
+static int
+_find_query_string_pos(char *path, size_t path_l)
+{
+	size_t i = 0;
+	size_t last = 0;
+
+	while(i < path_l) {
+		if (path[i] == '/') {
+			last = i;
+		}
+		i += 1;
+	}
+
+	/* URL ends with '/' -> no query part */
+	if (last == (path_l-1)) {
+		return -1;
+	} else {
+		i = last;
+	}
+
+	while(i < path_l) {
+		if (path[i] == '?') {
+			break;
+		}
+		i += 1;
+	}
+	if (i < path_l) {
+		return i+1;
+	}
+	return -1;
+}
+
 static int
 _find_url_param(char* path, size_t sz, const struct chunk *url_param_name)
 {
@@ -8149,15 +8189,26 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 {
 	struct http_txn *txn = l7;
 	struct http_msg *msg = &txn->req;
+	char *query_string;
 	char *value_start, *value_end;
+	char *path;
 	int anchor;
-	size_t value_l, chunk_sz;
+	size_t value_l, chunk_sz, path_l, query_string_l;
 
-	anchor = _find_url_param(msg->sol + msg->sl.rq.u, msg->sl.rq.u_l - msg->sl.rq.u,
-				 &(arg_p->data.str));
+	path = msg->sol + msg->sl.rq.u;
+	path_l = msg->sl.rq.u_l;
+
+	anchor = _find_query_string_pos(path, path_l);
+	if (anchor < 0) {
+		return 0;
+	}
+	query_string = path + anchor;
+	query_string_l = path_l - anchor;
+
+	anchor = _find_url_param(query_string, query_string_l, &(arg_p->data.str));
 
 	if (anchor >= 0) {
-		value_start = msg->sol + anchor + arg_p->data.str.len;
+		value_start = query_string + anchor + arg_p->data.str.len;
 		value_end = value_start;
 		while (*value_end != '\0' && *value_end != ' ' && *value_end != '&') {
 			value_end += 1;
@@ -8180,10 +8231,10 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 		memcpy(data->str.str, value_start, value_l);
 		data->str.str[value_l] = '\0';
 		data->str.len = value_l;
-	} else {
-		return 0;
+
+		return 1;
 	}
-	return 1;
+	return 0;
 }
 
 

@@ -484,28 +484,6 @@ int pattern_arg_str(const char *arg_str, struct pattern_arg **arg_p, int *arg_i)
 	(*arg_p)->data.str.str = strdup(arg_str);
 	(*arg_p)->data.str.len = strlen(arg_str);
 
-	return 1;
-}
-
-int pattern_url_param_arg_str(const char *arg_str, struct pattern_arg **arg_p, int *arg_i)
-{
-	char *buf;
-	size_t arg_str_l = strlen(arg_str);
-	size_t buf_l = arg_str_l + 1;
-
-	buf = malloc(sizeof(*arg_str) * (buf_l));
-	if (buf == NULL) {
-		return 0;
-	}
-	memcpy(buf, arg_str, arg_str_l);
-	buf[arg_str_l] = '=';
-	buf[buf_l] = '\0';
-
-	*arg_i = 1;
-	*arg_p = calloc(1, *arg_i*sizeof(struct pattern_arg));
-	(*arg_p)->type = PATTERN_ARG_TYPE_STRING;
-	(*arg_p)->data.str.str = buf;
-	(*arg_p)->data.str.len = buf_l;
 
 	return 1;
 }

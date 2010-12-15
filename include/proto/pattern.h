@@ -34,5 +34,4 @@ void pattern_register_convs(struct pattern_conv_kw_list *psl);
 
 int pattern_arg_ipmask(const char *arg_str, struct pattern_arg **arg_p, int *arg_i);
 int pattern_arg_str(const char *arg_str, struct pattern_arg **arg_p, int *arg_i);
-int pattern_url_param_arg_str(const char *arg_str, struct pattern_arg **arg_p, int *arg_i);
 #endif

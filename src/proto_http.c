@@ -8114,6 +8114,12 @@ pattern_fetch_hdr_ip(struct proxy *px, struct session *l4, void *l7, int dir,
 }
 
 /*
+ * XXX: This code to parse url path to get parameter value is ugly and
+ * inefficient. String matching is brute force, and most likely broken in some
+ * cases
+ */
+
+/*
  * Given a path string and its length, find the position of beginning of the
  * query string. Returns -1 if no query string is found in the path.
  *
@@ -8154,6 +8160,20 @@ _find_query_string_pos(char *path, size_t path_l)
 }
 
 static int
+_is_param_delimiter(char c)
+{
+	return c == '&' || c == ';' || c == ' ';
+}
+
+/*
+ * Given a url parameter (in the form "param_name="), find the starting
+ * position of the first occurence relatively to the query string, or -1 if the
+ * parameter is not found
+ *
+ * Example: if query_string is "yo=mama;ye=daddy" and url_param_name is "ye",
+ * the function will return 8
+ */
+static int
 _find_url_param_pos(char* query_string, size_t query_string_l,
 	            char* url_param_name, size_t url_param_name_l)
 {
@@ -8174,10 +8194,11 @@ _find_url_param_pos(char* query_string, size_t query_string_l,
 	}
 
 	if (j == url_param_name_l) {
-		if (anchor <= 0) {
-			return 0;
-		} else if (query_string[anchor-1] == '&'
-			   || query_string[anchor-1] == ';') {
+		if(i >= query_string || anchor <= 0
+		   || query_string[anchor+j] != '=') {
+			return -1;
+		}
+		if (_is_param_delimiter(query_string[anchor-1])) {
 			return anchor;
 		}
 		return -1;
@@ -8186,12 +8207,11 @@ _find_url_param_pos(char* query_string, size_t query_string_l,
 	return -1;
 }
 
-static int
-_is_param_delimiter(char c)
-{
-	return c == '&' || c == ';' || c == ' ';
-}
-
+/*
+ * Given a url parameter name, returns its value and size into *value and
+ * *value_l respectively. If the parameter is not found, *value is set to NULL
+ * and value_l is set to 0.
+ */
 static void
 _find_url_param_value(char* path, size_t path_l,
 		      char* url_param_name, size_t url_param_name_l,
@@ -8232,10 +8252,6 @@ not_found:
 	return;
 }
 
-/*
- * XXX: This code is ugly and inefficient. String matching is brute force, and
- * most likely broken in some cases
- */
 static int
 pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
                      const struct pattern_arg *arg_p, int arg_i, union pattern_data *data)
@@ -8265,7 +8281,7 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 /* Note: must not be declared <const> as its list will be overwritten */
 static struct pattern_fetch_kw_list pattern_fetch_keywords = {{ },{
 	{ "hdr", pattern_fetch_hdr_ip, pattern_arg_str, PATTERN_TYPE_IP, PATTERN_FETCH_REQ },
-	{ "url_param", pattern_fetch_url_param, pattern_url_param_arg_str, PATTERN_TYPE_STRING, PATTERN_FETCH_REQ },
+	{ "url_param", pattern_fetch_url_param, pattern_arg_str, PATTERN_TYPE_STRING, PATTERN_FETCH_REQ },
 	{ NULL, NULL, NULL, 0, 0 },
 }};
 

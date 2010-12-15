@@ -556,6 +556,12 @@ static inline void chunk_initstr(struct chunk *chk, char *str) {
 	chk->size = 0;			/* mark it read-only */
 }
 
+static inline void chunk_initstrn(struct chunk *chk, char *str, size_t n) {
+	chk->str = str;
+	chk->len = n;
+	chk->size = 0;			/* mark it read-only */
+}
+
 static inline int chunk_strcpy(struct chunk *chk, const char *str) {
 	size_t len;
 

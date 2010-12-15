@@ -8242,11 +8242,8 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 {
 	struct http_txn *txn = l7;
 	struct http_msg *msg = &txn->req;
-	char *path;
-	char *url_param_value;
-	size_t url_param_value_l;
-	int anchor;
-	size_t value_l, chunk_sz, path_l, query_string_l;
+	char *path, *url_param_value;
+	size_t path_l, url_param_value_l;
 
 	path = msg->sol + msg->sl.rq.u;
 	path_l = msg->sl.rq.u_l;
@@ -8257,24 +8254,7 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 		return 0;
 	}
 
-	chunk_sz = url_param_value_l + 1;
-
-	if (data->str.str == NULL) {
-		data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
-		data->str.size = chunk_sz;
-	} else if (data->str.size < chunk_sz) {
-		/* over-allocate to avoid reallocating all the time */
-		chunk_sz *= 2;
-		free(data->str.str);
-		data->str.size = chunk_sz;
-		data->str.str = malloc(sizeof(*data->str.str) * chunk_sz);
-		data->str.size = chunk_sz;
-	}
-
-	memcpy(data->str.str, url_param_value, url_param_value_l);
-	data->str.str[url_param_value_l] = '\0';
-	data->str.len = url_param_value_l;
-
+	chunk_initstrn(&data->str, url_param_value, url_param_value_l);
 	return 1;
 }
 

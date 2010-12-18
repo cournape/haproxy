@@ -8166,9 +8166,8 @@ _is_param_delimiter(char c)
 }
 
 /*
- * Given a url parameter (in the form "param_name="), find the starting
- * position of the first occurence relatively to the query string, or -1 if the
- * parameter is not found
+ * Given a url parameter, find the starting position of the first occurence
+ * relatively to the query string, or -1 if the parameter is not found
  *
  * Example: if query_string is "yo=mama;ye=daddy" and url_param_name is "ye",
  * the function will return 8

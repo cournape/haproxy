@@ -8267,7 +8267,7 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 	path_l = msg->sl.rq.u_l;
 
 	_find_url_param_value(path, path_l, arg_p->data.str.str, arg_p->data.str.len,
-		       	      &url_param_value, &url_param_value_l);
+			&url_param_value, &url_param_value_l);
 	if (url_param_value == NULL) {
 		return 0;
 	}

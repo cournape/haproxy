@@ -8235,7 +8235,7 @@ _find_url_param_value(char* path, size_t path_l,
 	if (anchor < 0) {
 		goto not_found;
 	} else {
-		value_start = query_string + anchor + url_param_name_l;
+		value_start = query_string + anchor + url_param_name_l + 1;
 		value_end = value_start;
 		while ((value_end < (query_string + query_string_l - 1))
 		       && !_is_param_delimiter(*(value_end+1))) {

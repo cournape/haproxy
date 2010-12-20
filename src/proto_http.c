@@ -8125,10 +8125,10 @@ pattern_fetch_hdr_ip(struct proxy *px, struct session *l4, void *l7, int dir,
  *
  * Example: if path = "/foo/bar/fubar?yo=mama;ye=daddy", and n = 22:
  *
- * &path[_find_query_string(path, n)] points to "yo=mama;ye=daddy" string
+ * &path[find_query_string(path, n)] points to "yo=mama;ye=daddy" string
  */
 static int
-_find_query_string_pos(char *path, size_t path_l)
+find_query_string_pos(char *path, size_t path_l)
 {
 	size_t i = 0;
 	size_t last = 0;
@@ -8160,7 +8160,7 @@ _find_query_string_pos(char *path, size_t path_l)
 }
 
 static int
-_is_param_delimiter(char c)
+is_param_delimiter(char c)
 {
 	return c == '&' || c == ';' || c == ' ';
 }
@@ -8173,8 +8173,8 @@ _is_param_delimiter(char c)
  * the function will return 8
  */
 static int
-_find_url_param_pos(char* query_string, size_t query_string_l,
-	            char* url_param_name, size_t url_param_name_l)
+find_url_param_pos(char* query_string, size_t query_string_l,
+            char* url_param_name, size_t url_param_name_l)
 {
 	int i, j, anchor;
 
@@ -8198,7 +8198,7 @@ _find_url_param_pos(char* query_string, size_t query_string_l,
 		}
 		if (anchor == 0) {
 			return 0;
-		} else if (_is_param_delimiter(query_string[anchor-1])) {
+		} else if (is_param_delimiter(query_string[anchor-1])) {
 			return anchor;
 		}
 		return -1;
@@ -8213,7 +8213,7 @@ _find_url_param_pos(char* query_string, size_t query_string_l,
  * and value_l is set to 0.
  */
 static void
-_find_url_param_value(char* path, size_t path_l,
+find_url_param_value(char* path, size_t path_l,
 		      char* url_param_name, size_t url_param_name_l,
 		      char** value, size_t* value_l)
 {
@@ -8222,14 +8222,14 @@ _find_url_param_value(char* path, size_t path_l,
 	size_t query_string_l;
 	int anchor;
 
-	anchor = _find_query_string_pos(path, path_l);
+	anchor = find_query_string_pos(path, path_l);
 	if (anchor < 0) {
 		goto not_found;
 	}
 	query_string = path + anchor;
 	query_string_l = path_l - anchor;
 
-	anchor = _find_url_param_pos(query_string, query_string_l,
+	anchor = find_url_param_pos(query_string, query_string_l,
 			url_param_name, url_param_name_l);
 
 	if (anchor < 0) {
@@ -8238,7 +8238,7 @@ _find_url_param_value(char* path, size_t path_l,
 		value_start = query_string + anchor + url_param_name_l + 1;
 		value_end = value_start;
 		while ((value_end < (query_string + query_string_l - 1))
-		       && !_is_param_delimiter(*(value_end+1))) {
+		       && !is_param_delimiter(*(value_end+1))) {
 			value_end += 1;
 		}
 		*value = value_start;
@@ -8264,7 +8264,7 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 	path = msg->sol + msg->sl.rq.u;
 	path_l = msg->sl.rq.u_l;
 
-	_find_url_param_value(path, path_l, arg_p->data.str.str, arg_p->data.str.len,
+	find_url_param_value(path, path_l, arg_p->data.str.str, arg_p->data.str.len,
 			&url_param_value, &url_param_value_l);
 	if (url_param_value == NULL) {
 		return 0;

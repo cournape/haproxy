@@ -8274,7 +8274,6 @@ pattern_fetch_url_param(struct proxy *px, struct session *l4, void *l7, int dir,
 	/* url_param_value_l should be enough, but the +1 is necessary to make
 	 * this works - could this be a one-off error somewhere else ? */
 	data->str.len = url_param_value_l + 1;
-	chunk_printf(&data->str, "\n");
 	return 1;
 }
 
